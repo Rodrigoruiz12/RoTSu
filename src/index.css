@@ -1,50 +1,99 @@
 @import "tailwindcss";
 
+@theme {
+  /* VS Code Gray palette */
+  --color-brand-bg: #1e1e1e;
+  --color-brand-surface: #252526;
+  --color-brand-border: #333333;
+  --color-brand-text: #cccccc;
+  --color-brand-text-bright: #ffffff;
+  
+  /* Emerald Accent */
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
+}
+
 @layer base {
   :root {
-    @apply text-[rgba(255,255,255,0.87)] bg-[#242424] font-sans;
+    background-color: var(--color-brand-bg);
+    color: var(--color-brand-text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   }
-
+  
   body {
-    @apply grid place-items-center min-w-[320px] min-h-screen relative m-0;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+  
+  /* Estilo base para el scrollbar (Smooth and dark) */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-brand-bg);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-brand-surface);
+    border-radius: 5px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-emerald-500);
   }
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  opacity: 0.05;
-  background: url("./logo.svg");
-  background-size: 256px;
-  transform: rotate(-12deg) scale(1.35);
-  animation: slide 30s linear infinite;
-  pointer-events: none;
+/* Clases de utilidad para el logo matemático (CSS puro) */
+.math-logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  width: 40px;
+  height: 40px;
 }
 
-@keyframes slide {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 256px 224px;
-  }
+.math-shape {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--color-emerald-500);
+  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  animation: morph 8s ease-in-out infinite;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0);
+.math-shape:nth-child(2) {
+  animation-delay: -2s;
+  border-color: var(--color-emerald-400);
+  width: 80%;
+  height: 80%;
+}
+
+.math-shape:nth-child(3) {
+  animation-delay: -4s;
+  border-color: var(--color-emerald-600);
+  width: 60%;
+  height: 60%;
+}
+
+@keyframes morph {
+  0% {
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    transform: rotate(0deg);
   }
-  to {
+  25% {
+    border-radius: 58% 42% 75% 25% / 76% 46% 54% 24%;
+  }
+  50% {
+    border-radius: 50% 50% 33% 67% / 55% 27% 73% 45%;
+    transform: rotate(180deg);
+  }
+  75% {
+    border-radius: 33% 67% 58% 42% / 63% 68% 32% 37%;
+  }
+  100% {
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
     transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion) {
-  *,
-  ::before,
-  ::after {
-    animation: none !important;
   }
 }
