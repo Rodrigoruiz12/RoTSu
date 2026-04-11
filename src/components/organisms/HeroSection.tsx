@@ -35,7 +35,7 @@ export const HeroSection: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link to="/contacto">
               <Button variant="primary" className="flex items-center justify-center gap-2 text-lg px-8 py-4">
-                Empezar un proyecto <ArrowRight size={20} />
+                Iniciar un proyecto <ArrowRight size={20} />
               </Button>
             </Link>
             <Link to="/portafolio">
