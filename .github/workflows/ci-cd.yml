@@ -24,8 +24,7 @@ jobs:
       - name: Install Dependencies
         run: |
           pnpm config set ignore-scripts false
-          pnpm approve-builds || true
-          pnpm install --frozen-lockfile
+          pnpm install
 
       - name: Run Unit Tests
         run: pnpm run test
