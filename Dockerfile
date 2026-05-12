@@ -2,20 +2,17 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Habilitar corepack para usar pnpm de manera nativa
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
 # Copiar configuración de paquetes, dependencias y seguridad (.npmrc)
-COPY package.json pnpm-lock.yaml* .npmrc ./
+COPY package.json package-lock.json* ./
 
 # Instalación determinista y segura
-RUN pnpm install --frozen-lockfile
+RUN npm install
 
 # Copiar el código fuente
 COPY . .
 
 # Construir aplicación con Vite
-RUN pnpm run build
+RUN npm run build
 
 # Imagen de producción superligera (Nginx para servir estáticos)
 FROM nginx:alpine
