@@ -13,7 +13,7 @@ export const ContactSection: React.FC = () => {
       <div className="container mx-auto px-6 max-w-4xl relative z-10">
         <SectionHeading 
           title="Contáctanos" 
-          subtitle="¿Listo para acelerar el crecimiento de tu empresa? Escríbenos y cuéntanos sobre tu próximo desafío tecnológico."
+          subtitle="¿Listo para acelerar el crecimiento de tu empresa y mejorarla para que quede espectacular? Escríbenos y cuéntanos sobre tu próximo desafío tecnológico."
         />
 
         <motion.div 

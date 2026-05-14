@@ -56,7 +56,7 @@ export const Footer: React.FC = () => {
         </div>
         
         <div className="border-t border-[#333333] pt-8 flex flex-col md:flex-row items-center justify-between text-gray-500 text-sm">
-          <p>&copy; {new Date().getFullYear()} RoTSu. Todos los derechos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} RoTSu. Todos los derechos reservados ©.</p>
           <div className="flex gap-4 mt-4 md:mt-0">
             <a href="#" className="hover:text-emerald-400 transition-colors">Privacidad</a>
             <a href="#" className="hover:text-emerald-400 transition-colors">Términos</a>
