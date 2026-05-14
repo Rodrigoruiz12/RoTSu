@@ -1,44 +1,66 @@
-# bun-react-tailwind-template
+# RoTSu - Microservicio Frontend Corporativo
 
-To install dependencies:
+Este repositorio contiene la implementación del microservicio frontend para **RoTSu**, una empresa de desarrollo de software y soluciones tecnológicas orientada a Pymes y corporaciones. 
 
+El proyecto fue construido bajo estrictos estándares de ingeniería de software, enfocándose en la modularidad de componentes, un pipeline robusto de CI/CD, contenedorización optimizada y una arquitectura orientada a la seguridad de la cadena de suministro (Supply Chain Security).
+
+---
+
+## 1. Arquitectura de Software y Diseño
+
+### Stack Tecnológico
+La aplicación está desarrollada utilizando:
+- **React 19** empacado con **Vite**, y gestionado a través de **npm** (Gestor de paquetes estándar de Node.js).
+- **TailwindCSS v4** y CSS Nativo (Variables CSS) para un estilizado utilitario y un control milimétrico sobre el diseño responsivo.
+- **Framer Motion** para la gestión de micro-interacciones y animaciones de UI.
+- **React Router DOM** configurado como Multi-Page Application (MPA).
+
+### Prevención de Ataques de Cadena de Suministro (Supply Chain Security)
+Para robustecer la seguridad del ciclo de vida del software, se integró el archivo de configuración `.npmrc`. Esto incluye medidas mitigantes severas para prevenir ataques como:
+- **Dependency Confusion / DNS Hijacking**: Al forzar las descargas por `https` estricto y bloquear la consulta de registros no oficiales.
+- **Validaciones automáticas de auditoría**: Intercepta de manera preventiva librerías con vulnerabilidades críticas reportadas desde el momento de instalación (`audit-level=high`).
+- **Phantom Dependencies**: Gracias al motor de resolución de `npm` y la configuración estructurada de dependencias, se evita que paquetes maliciosos eleven dependencias que permitan la ejecución de scripts arbitrarios de forma silenciosa.
+
+---
+
+## 2. Estrategia de Ramificación: GitFlow
+
+Para organizar el trabajo colaborativo y asegurar entregas continuas sin riesgo, se ha implementado el modelo de ramificación **GitFlow**.
+- `main`: Rama de producción. Solo recibe *merges* desde versiones estables y aprobadas.
+- `develop`: Rama base de desarrollo. Contiene el historial principal de integración.
+Las nuevas funcionalidades (features) y correcciones (hotfixes) se gestionan mediante ramas a partir de `develop`.
+
+---
+
+## 3. DevOps: Contenedorización y Orquestación
+
+### Docker (Imágenes Optimizadas Multi-Stage con Nginx)
+Para garantizar una distribución liviana y libre de fallos operacionales ("en mi máquina sí funciona"), el proyecto cuenta con un `Dockerfile` bajo el patrón **Multi-stage Build** (IE1).
+1. **Fase Builder (Node.js)**: Utiliza `node:22-alpine` usando `npm`. Copia el archivo `.npmrc` e instala de forma determinista para realizar el proceso de *build* de Vite.
+2. **Fase de Producción (Nginx)**: Utiliza la imagen superligera `nginx:alpine`, la cual solo copia los artefactos estáticos precompilados (`/dist`). Se descarta Node.js por completo, anulando cualquier superficie de ataque basada en Node en tiempo de ejecución.
+
+### Orquestación (Docker Compose)
+Se incorporó `docker-compose.yml` para orquestar la solución en clústeres medianos (IE5), mapeando el puerto interno `80` (Nginx) al `3000` de la máquina host.
 ```bash
-bun install
+docker-compose up -d --build
+
 ```
+La aplicación se expondrá en `http://localhost:3000`.
 
-To start a development server:
+---
 
-```bash
-bun dev
-```
+## 4. Pipeline CI/CD, Trazabilidad y Gobernanza
 
-To run for production:
+El proyecto automatiza completamente su ciclo de vida mediante **GitHub Actions** (IE4), ubicado en `.github/workflows/ci-cd.yml`. El pipeline conecta desarrollo con entrega continua a través de 3 etapas (*jobs*):
 
-```bash
-bun start
-```
+1. **Build & Test (Integración Continua)**:
+   - Configura Node 22 + `npm`.
+   - Ejecuta validaciones de integridad con **Vitest** (`npm run test`) (IE2). Si una prueba falla, el pipeline aborta, previniendo despliegues rotos.
+   
+2. **Escaneo de Seguridad Dinámico (Gobernanza) (IE3)**:
+   - Utiliza **Snyk** (`snyk/actions/node@master`) para analizar vulnerabilidades de dependencias. Implementa *DevSecOps* (Shift-Left).
+   - Se apoya pasivamente en **Dependabot** (`.github/dependabot.yml`) para actualizaciones periódicas.
 
-This project was created using `bun init` in bun v1.3.11. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+3. **Deploy Simulado (Entrega Continua)**:
+   - Construye la imagen Multi-stage mediante `docker buildx` y la orquesta temporalmente con `docker-compose` internamente en el Runner para garantizar un arranque exento de *crashes*.
 
-## Flujo de Trabajo (Workflow)
-Hemos decidido implementar **GitFlow** para este proyecto. 
-**Justificación:** Al ser un equipo colaborativo simulado, GitFlow nos permite mantener una rama `main` estable con código de producción, mientras usamos `develop` para integrar las nuevas características de manera segura. Las ramas `feature/` nos aíslan durante el desarrollo y `hotfix/` nos da agilidad para errores críticos sin interrumpir el desarrollo en curso.
-
-## Convenciones del Proyecto
-
-### Nombrado de Ramas (Naming)
-* **Características:** `feature/nombre-de-la-tarea` (ej. `feature/crear-navbar`)
-* **Correcciones urgentes:** `hotfix/nombre-del-error` (ej. `hotfix/fix-error-inicio`)
-
-### Convenciones de Commits
-Usaremos Conventional Commits:
-* `feat:` para nuevas características.
-* `fix:` para solución de errores.
-* `docs:` para cambios en la documentación.
-* `style:` para formato (espacios, punto y coma, etc).
-
-### Proceso de Revisión (Code Review) y Estrategia de Merge
-1. Todo código nuevo debe hacerse en una rama derivada de `develop` (o `main` para hotfixes).
-2. Se debe abrir un **Pull Request (PR)**.
-3. Se requiere la revisión y aprobación de al menos un compañero antes de fusionar.
-4. Los merges hacia `develop` se harán usando "Squash and Merge" para mantener el historial limpio, o "Create a merge commit" para mantener trazabilidad.
