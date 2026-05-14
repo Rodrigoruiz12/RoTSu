@@ -9,22 +9,22 @@ importers:
   .:
     dependencies:
       framer-motion:
-        specifier: ^12.0.0
+        specifier: ^12.38.0
         version: 12.38.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       lucide-react:
-        specifier: ^0.470.0
-        version: 0.470.0(react@19.2.6)
+        specifier: ^1.7.0
+        version: 1.16.0(react@19.2.6)
       react:
-        specifier: ^19.0.0
+        specifier: ^19
         version: 19.2.6
       react-dom:
-        specifier: ^19.0.0
+        specifier: ^19
         version: 19.2.6(react@19.2.6)
       react-router-dom:
-        specifier: ^7.1.1
+        specifier: ^7.13.2
         version: 7.15.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       tailwindcss:
-        specifier: ^4.0.0
+        specifier: ^4.1.11
         version: 4.3.0
     devDependencies:
       '@tailwindcss/vite':
@@ -672,8 +672,8 @@ packages:
   loupe@3.2.1:
     resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
 
-  lucide-react@0.470.0:
-    resolution: {integrity: sha512-tqYODeoB3qU5gxH33IbL7IcF05EYYzsZQJqdM9HGGHwmoJMPvVLPHO6Plu6HNAfntucZQ41taEw6aUpwOtaoXg==}
+  lucide-react@1.16.0:
+    resolution: {integrity: sha512-dYwyPzb4MEKpGUmNYk3WKWPnMrHs3FKM+q94kAnJrcDIqqn1hq2xY8scaS2ovsOCM5D51ey2gaRG3PBb1vgoYQ==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -1319,7 +1319,7 @@ snapshots:
 
   loupe@3.2.1: {}
 
-  lucide-react@0.470.0(react@19.2.6):
+  lucide-react@1.16.0(react@19.2.6):
     dependencies:
       react: 19.2.6
 

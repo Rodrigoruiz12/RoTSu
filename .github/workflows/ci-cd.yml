@@ -41,7 +41,7 @@ jobs:
         with:
           args: --severity-threshold=high
           command: test
-        continue-on-error: true # Permite pasar si no hay token configurado en fork/local
+        continue-on-error: false 
 
   simulate-deploy:
     needs: [build-and-test, security-scan]
