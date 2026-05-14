@@ -2,7 +2,7 @@
 
 Este repositorio contiene la implementación del microservicio frontend para **RoTSu**, una empresa de desarrollo de software y soluciones tecnológicas orientada a Pymes y corporaciones. 
 
-El proyecto fue construido bajo estrictos estándares de ingeniería de software, enfocándose en la modularidad de componentes, un pipeline robusto de CI/CD, contenedorización optimizada y una arquitectura orientada a la seguridad de la cadena de suministro (Supply Chain Security).
+El proyecto fue construido bajo estrictos estándares de ingeniería de software, enfocándose en la modularidad de componentes, un pipeline robusto de CI/CD, contenedorización optimizada.
 
 ---
 
