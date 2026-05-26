@@ -14,13 +14,7 @@ La aplicación está desarrollada utilizando:
 - **TailwindCSS v4** y CSS Nativo (Variables CSS) para un estilizado utilitario y un control milimétrico sobre el diseño responsivo.
 - **Framer Motion** para la gestión de micro-interacciones y animaciones de UI.
 - **React Router DOM** configurado como Multi-Page Application (MPA).
-
-### Prevención de Ataques de Cadena de Suministro (Supply Chain Security)
-Para robustecer la seguridad del ciclo de vida del software, se integró el archivo de configuración `.npmrc`. Esto incluye medidas mitigantes severas para prevenir ataques como:
-- **Dependency Confusion / DNS Hijacking**: Al forzar las descargas por `https` estricto y bloquear la consulta de registros no oficiales.
-- **Validaciones automáticas de auditoría**: Intercepta de manera preventiva librerías con vulnerabilidades críticas reportadas desde el momento de instalación (`audit-level=high`).
-- **Phantom Dependencies**: Gracias al motor de resolución de `npm` y la configuración estructurada de dependencias, se evita que paquetes maliciosos eleven dependencias que permitan la ejecución de scripts arbitrarios de forma silenciosa.
-
+  
 ---
 
 ## 2. Estrategia de Ramificación: GitFlow
