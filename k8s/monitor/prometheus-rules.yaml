@@ -1,0 +1,85 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rotsu-alerts
+  namespace: rotsu
+  labels:
+    app.kubernetes.io/name: rotsu-alerts
+    app.kubernetes.io/part-of: rotsu-platform
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: rotsu-frontend.rules
+      rules:
+        # Alerta: microservicio caído (no hay pods listos)
+        - alert: RoTSuFrontendDown
+          expr: kube_deployment_status_replicas_available{deployment="rotsu-frontend"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            service: rotsu-frontend
+          annotations:
+            summary: "Microservicio RoTSu caído"
+            description: "No hay réplicas disponibles del deployment rotsu-frontend en {{ $labels.namespace }}."
+
+        # Alerta: alta tasa de errores 5xx
+        - alert: RoTSuHighErrorRate
+          expr: |
+            sum(rate(nginx_http_requests_total{status=~"5.."}[5m]))
+              /
+            sum(rate(nginx_http_requests_total[5m]))
+              > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            service: rotsu-frontend
+          annotations:
+            summary: "Tasa alta de errores HTTP 5xx"
+            description: "Más del 5% de las requests están retornando 5xx durante los últimos 5m."
+
+        # Alerta: cobertura de pruebas baja
+        - alert: RoTSuLowTestCoverage
+          expr: rotsu_test_coverage_percent{type="lines"} < 70
+          for: 0m
+          labels:
+            severity: warning
+            service: rotsu-ci
+          annotations:
+            summary: "Cobertura de pruebas por debajo del umbral (70%)"
+            description: "La cobertura de líneas es {{ $value }}%, por debajo del 70% requerido."
+
+        # Alerta: pipeline CI/CD falló recientemente
+        - alert: RoTSuPipelineFailed
+          expr: rotsu_pipeline_result{status="failure"} == 1
+          for: 0m
+          labels:
+            severity: critical
+            service: rotsu-ci
+          annotations:
+            summary: "El pipeline CI/CD de RoTSu reportó fallo"
+            description: "El último run del pipeline terminó con estado failure. Revisar GitHub Actions."
+
+        # Alerta: uso elevado de CPU
+        - alert: RoTSuHighCPU
+          expr: |
+            1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            service: node
+          annotations:
+            summary: "Uso elevado de CPU (>85%)"
+            description: "El uso de CPU supera el 85% durante los últimos 10m."
+
+        # Alerta: uso elevado de memoria
+        - alert: RoTSuHighMemory
+          expr: |
+            (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)
+              / node_memory_MemTotal_bytes > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            service: node
+          annotations:
+            summary: "Uso elevado de memoria (>85%)"
+            description: "El uso de memoria supera el 85% durante los últimos 10m."

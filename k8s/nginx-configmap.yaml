@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rotsu-nginx-config
+  namespace: rotsu
+  labels:
+    app: rotsu-frontend
+    app.kubernetes.io/name: rotsu-frontend
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # Compresión gzip
+        gzip on;
+        gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+        gzip_min_length 256;
+
+        # SPA: fallback a index.html para rutas client-side
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        # Endpoint de métricas para nginx-prometheus-exporter (stub_status)
+        location /stub_status {
+            stub_status;
+            allow 127.0.0.1;
+            deny all;
+        }
+
+        # Cacheo de assets estáticos
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+            expires 30d;
+            add_header Cache-Control "public, immutable";
+        }
+    }

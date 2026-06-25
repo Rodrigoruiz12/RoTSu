@@ -1,0 +1,33 @@
+# =============================================================================
+# Helm values para Prometheus Pushgateway
+# -----------------------------------------------------------------------------
+# Recibe métricas del pipeline CI/CD (coverage, deploy time, errores)
+# Aplicar con:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm upgrade --install pushgateway prometheus-community/prometheus-pushgateway \
+#     -n monitoring -f k8s/monitor/pushgateway.yaml
+# =============================================================================
+
+service:
+  type: ClusterIP
+  port: 9091
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+# Persistencia opcional (las métricas push se pierden al reiniciar si no hay PVC)
+persistence:
+  enabled: false
+
+# Para que Prometheus scrapee el pushgateway, crear ServiceMonitor aparte
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+  interval: 30s

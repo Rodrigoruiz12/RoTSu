@@ -1,0 +1,36 @@
+# =============================================================================
+# terraform.tfvars.example - Ejemplo de variables para Terraform
+# -----------------------------------------------------------------------------
+# Copiar a terraform.tfvars y ajustar los valores antes de ejecutar:
+#   cp terraform.tfvars.example terraform.tfvars
+#   terraform init
+#   terraform plan
+#   terraform apply
+# =============================================================================
+
+aws_region   = "us-east-1"
+project_name = "rotsu"
+environment  = "dev"
+
+# Instancia EC2: t3.small (2 vCPU, 2GB RAM) es el minimo para kubeadm single-node
+# con monitoring (kube-prometheus-stack reducido).
+instance_type = "t3.small"
+use_spot      = true
+spot_max_price = "0.020"
+
+# Repositorio de imagen Docker (Docker Hub publico - ECR no esta disponible en AWS Academy Learner Lab)
+docker_image_repo = "rotsu/frontend"
+
+# IAM user para GitHub Actions
+github_actions_iam_name = "rotsu-github-actions"
+
+# Acceso SSH a la EC2 (OPCIONAL - se recomienda usar AWS SSM Session Manager)
+# Por defecto el proyecto usa SSM para todas las operaciones remotas.
+# Cambiar enable_ssh_access=true solo si necesitas acceso SSH de debug.
+enable_ssh_access = false
+# ssh_public_key    = ""
+# allowed_ssh_cidr  = "0.0.0.0/0"
+ssm_kubeconfig_name = "/rotsu/k8s/kubeconfig"
+
+# Habilitar backend remoto S3+DynamoDB (recomendado para CI/CD y trabajo en pareja)
+enable_remote_backend = false

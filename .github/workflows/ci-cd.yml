@@ -2,70 +2,385 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  id-token: write
+  statuses: write
 
 jobs:
+  
+  # Job 1: Build, lint y tests con coverage
+  
   build-and-test:
+    name: Build & Test (coverage)
     runs-on: ubuntu-latest
+    outputs:
+      coverage-lines: ${{ steps.coverage.outputs.lines }}
+      coverage-branches: ${{ steps.coverage.outputs.branches }}
+      coverage-functions: ${{ steps.coverage.outputs.functions }}
+      coverage-statements: ${{ steps.coverage.outputs.statements }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup Node and npm
+      - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Run Unit Tests
-        run: npm run test
+      - name: Run Tests with Coverage
+        run: npm run test:coverage
 
       - name: Build Application
         run: npm run build
 
-  security-scan:
+      - name: Extract coverage metrics
+        id: coverage
+        run: |
+          LINES=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
+          BRANCHES=$(jq -r '.total.branches.pct' coverage/coverage-summary.json)
+          FUNCTIONS=$(jq -r '.total.functions.pct' coverage/coverage-summary.json)
+          STATEMENTS=$(jq -r '.total.statements.pct' coverage/coverage-summary.json)
+          echo "lines=$LINES" >> $GITHUB_OUTPUT
+          echo "branches=$BRANCHES" >> $GITHUB_OUTPUT
+          echo "functions=$FUNCTIONS" >> $GITHUB_OUTPUT
+          echo "statements=$STATEMENTS" >> $GITHUB_OUTPUT
+          echo "::notice::Coverage - Lines: $LINES% | Branches: $BRANCHES% | Functions: $FUNCTIONS% | Statements: $STATEMENTS%"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage/
+            lcov.info
+          retention-days: 7
+
+  
+  # Job 2: SonarCloud Quality Gate (IE5/IE6)
+  
+  sonarcloud:
+    name: SonarCloud Quality Gate
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  
+  # Job 3: Snyk Security Scan (IE5/IE6)
+  
+  snyk-security:
+    name: Snyk Security Scan
     needs: build-and-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Run Snyk Security Scan
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
           command: test
-        continue-on-error: false 
+        continue-on-error: false
 
-  simulate-deploy:
-    needs: [build-and-test, security-scan]
+  
+  # Job 4: Auditoría de cumplimiento (IE5/IE6)
+  
+  audit-compliance:
+    name: Compliance Audit
+    needs: build-and-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Construir Imagen Docker
-        run: docker build -t rotsu-app:test .
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-      - name: Simular Despliegue
+      - name: Install hadolint
         run: |
-          # Levanta el contenedor
-          docker run -d -p 3000:80 --name test-container rotsu-app:test
-          
-          # Espera 3 segundos para asegurar que Nginx inicie
-          sleep 3
-          
-          # Hace un HTTP request. Si falla el comando 'exit 1' detiene el pipeline
-          curl -f http://localhost:3000 || exit 1
-          
-          # Imprimir los logs del contenedor para que quede en el run
-          docker logs test-container
-          
-          # Limpia y destruye el contenedor
-          docker rm -f test-container
+          curl -sL -o /usr/local/bin/hadolint \
+            https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+          chmod +x /usr/local/bin/hadolint
+
+      - name: Run Compliance Audit
+        run: bash scripts/audit.sh
+  
+  # Job 5: Build & Push Docker image a ECR (solo main/develop)
+  
+  build-and-push:
+    name: Build & Push to ECR
+    needs: [build-and-test, sonarcloud, snyk-security, audit-compliance]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Ensure ECR repository exists (crea si no existe - primer push)
+        run: |
+          ECR_URL=$(aws ecr describe-repositories \
+            --repository-names rotsu/frontend \
+            --query 'repositories[0].repositoryUri' --output text 2>/dev/null || echo "")
+          if [ -z "$ECR_URL" ] || [ "$ECR_URL" = "None" ]; then
+            echo "::warning::ECR no existe, creandolo para este push..."
+            aws ecr create-repository \
+              --repository-name rotsu/frontend \
+              --image-scanning-configuration scanOnPush=true \
+              --image-tag-mutability MUTABLE >/dev/null
+            ECR_URL=$(aws ecr describe-repositories \
+              --repository-names rotsu/frontend \
+              --query 'repositories[0].repositoryUri' --output text)
+            echo "::notice::ECR creado: $ECR_URL"
+          fi
+          echo "ECR_URL=$ECR_URL" >> $GITHUB_ENV
+
+      - name: Generate image metadata
+        id: meta
+        run: |
+          ECR_URL=$(echo "$ECR_URL" | tr -d '\r\n')
+          TAG="sha-${GITHUB_SHA::7}"
+          echo "ecr-url=$ECR_URL" >> $GITHUB_OUTPUT
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+          echo "::notice::Imagen: $ECR_URL:$TAG"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.ecr-url }}:${{ steps.meta.outputs.version }}
+            ${{ steps.meta.outputs.ecr-url }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  
+  # Job 6: Terraform Apply (solo main) - provisiona/actualiza AWS infra
+  
+  terraform-apply:
+    name: Terraform Apply (AWS)
+    needs: [build-and-push]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      k8s_instance_id: ${{ steps.outputs.outputs.k8s_instance_id }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.7"
+
+      - name: Terraform Format
+        id: fmt
+        run: terraform -chdir=terraform fmt -check
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        run: terraform -chdir=terraform init -backend=false
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform -chdir=terraform validate
+
+      - name: Terraform Apply
+        id: apply
+        run: terraform -chdir=terraform apply -auto-approve -input=false
+
+      - name: Get instance ID for downstream jobs
+        id: outputs
+        run: |
+          INSTANCE_ID=$(terraform -chdir=terraform output -raw k8s_instance_id)
+          echo "k8s_instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+          echo "::notice::k8s instance ID: $INSTANCE_ID"
+
+
+  # =============================================================================
+  # Job 7: Deploy K8s + Publish CI metrics (solo main)
+  # -----------------------------------------------------------------------------
+  # El kubeconfig se lee directamente de SSM Parameter Store (no se baja artifact)
+  # =============================================================================
+  deploy-k8s:
+    name: Deploy to Kubernetes
+    needs: [terraform-apply, build-and-push, build-and-test]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.7"
+
+      - name: Get ECR URL
+        id: ecr
+        run: |
+          ECR_URL=$(aws ecr describe-repositories \
+            --repository-names rotsu/frontend \
+            --query 'repositories[0].repositoryUri' --output text)
+          echo "url=$ECR_URL" >> $GITHUB_OUTPUT
+
+      - name: Get instance public IP (via AWS API, no SSH needed)
+        id: ip
+        run: |
+          # Usar AWS API para describir la instancia (no requiere SSH ni SSM)
+          IP=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=rotsu-k8s-node" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+          if [ -z "$IP" ] || [ "$IP" = "None" ]; then
+            echo "::error::No se encontro IP publica para la instancia Kubernetes"
+            exit 1
+          fi
+          echo "ip=$IP" >> $GITHUB_OUTPUT
+          echo "::notice::k8s node IP: $IP"
+
+      - name: Terraform Init K8s (lee kubeconfig de SSM Parameter)
+        run: terraform -chdir=terraform/k8s init -backend=false
+
+      - name: Terraform Apply K8s
+        id: deploy
+        env:
+          TF_VAR_ecr_repository_url: ${{ steps.ecr.outputs.url }}
+          TF_VAR_image_tag: ${{ needs.build-and-push.outputs.image-tag }}
+        run: |
+          START=$(date +%s)
+          terraform -chdir=terraform/k8s apply -auto-approve -input=false
+          END=$(date +%s)
+          echo "deploy-duration=$((END - START))" >> $GITHUB_OUTPUT
+
+      - name: Verify deployment via SSM
+        env:
+          INSTANCE_ID: ${{ needs.terraform-apply.outputs.k8s_instance_id }}
+        run: |
+          echo "Verificando deployment via SSM (sin SSH)..."
+          # Ejecutar kubectl desde la EC2 via SSM (cluster Kubernetes esta ahi)
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "sudo kubectl get pods -n rotsu -o wide",
+              "sudo kubectl get svc -n rotsu",
+              "sudo kubectl get ingress -n rotsu"
+            ]' \
+            --comment "Verify RoTSu deployment" \
+            --output text --query 'Command.CommandId')
+          for i in $(seq 1 20); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'Status' --output text 2>/dev/null || echo "Pending")
+            if [ "$STATUS" = "Success" ]; then break; fi
+            sleep 3
+          done
+          aws ssm get-command-invocation \
+            --command-id "$CMD_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query 'StandardOutputContent' --output text
+
+      - name: Publish CI metrics to Pushgateway
+        if: always()
+        env:
+          PUSHGATEWAY_URL: http://${{ steps.ip.outputs.ip }}:9091
+        run: |
+          PIPELINE_STATUS="success"
+          if [ "${{ job.status }}" != "success" ]; then
+            PIPELINE_STATUS="failure"
+          fi
+          bash scripts/publish-ci-metrics.sh \
+            --pushgateway-url="$PUSHGATEWAY_URL" \
+            --deploy-duration=${{ steps.deploy.outputs.deploy-duration || 0 }} \
+            --coverage-lines=${{ needs.build-and-test.outputs.coverage-lines || 0 }} \
+            --coverage-branches=${{ needs.build-and-test.outputs.coverage-branches || 0 }} \
+            --coverage-functions=${{ needs.build-and-test.outputs.coverage-functions || 0 }} \
+            --coverage-statements=${{ needs.build-and-test.outputs.coverage-statements || 0 }} \
+            --pipeline-status="$PIPELINE_STATUS" \
+            --errors=0 || echo "::warning::No se pudieron publicar metricas (Pushgateway no disponible)"
+
+      - name: Rollback on failure via SSM
+        if: failure()
+        env:
+          INSTANCE_ID: ${{ needs.terraform-apply.outputs.k8s_instance_id }}
+        run: |
+          echo "::error::Despliegue fallido. Ejecutando rollback via SSM..."
+          aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "sudo kubectl rollout undo deployment/rotsu-frontend -n rotsu",
+              "sudo kubectl rollout status deployment/rotsu-frontend -n rotsu --timeout=60s"
+            ]' \
+            --comment "Rollback RoTSu deployment" \
+            --output text --query 'Command.CommandId' || true
+          exit 1
+
