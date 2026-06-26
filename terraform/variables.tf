@@ -61,7 +61,7 @@ variable "docker_image_repo" {
 variable "enable_ssh_access" {
   description = "Si true, crea key pair SSH y abre puerto 22. Recomendado: false (usar SSM Session Manager)"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "ssm_kubeconfig_name" {

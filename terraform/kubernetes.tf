@@ -44,7 +44,7 @@ resource "null_resource" "k8s_ready" {
     type        = "ssh"
     host        = local.k8s_public_ip
     user        = local.k8s_ssh_user
-    private_key = file(local.k8s_ssh_key_path)
+    private_key = var.ssh_public_key != "" ? file(local.k8s_ssh_key_path) : tls_private_key.k3s[0].private_key_pem
     timeout     = "15m"
   }
 
