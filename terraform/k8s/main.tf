@@ -17,6 +17,7 @@ resource "kubectl_manifest" "service" {
 
 resource "kubectl_manifest" "deployment" {
   depends_on = [kubectl_manifest.namespace, kubectl_manifest.nginx_configmap]
+  wait_for_rollout = false
   yaml_body = replace(
     file("${path.module}/../../k8s/deployment.yaml"),
     "IMAGE_PLACEHOLDER",
