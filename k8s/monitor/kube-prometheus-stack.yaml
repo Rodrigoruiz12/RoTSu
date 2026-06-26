@@ -1,0 +1,102 @@
+# =============================================================================
+# Helm values para kube-prometheus-stack (OPTIMIZADO PARA t3.small = 2GB RAM)
+# -----------------------------------------------------------------------------
+# Despliega: Prometheus + Grafana + Alertmanager + node-exporter + cAdvisor
+# Aplicar con:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#     -n monitoring --create-namespace -f k8s/monitor/kube-prometheus-stack.yaml
+#
+# Optimizaciones para t3.small:
+#   - kubeStateMetrics deshabilitado (consume ~100MB sin aportar a IE1/IE3)
+#   - Prometheus con resources reducidos
+#   - Retention 1 dia (vs default 10d)
+#   - Grafana admin password simple
+# =============================================================================
+
+# ---- Prometheus ----
+prometheus:
+  prometheusSpec:
+    # Scrapea todos los ServiceMonitors sin filtrar por label del Helm release
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    retention: 1d
+    retentionSize: "2GB"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+      limits:
+        cpu: 200m
+        memory: 512Mi
+
+# ---- Alertmanager ----
+alertmanager:
+  enabled: true
+  config:
+    route:
+      group_by: ['alertname', 'job']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 1h
+      receiver: 'default'
+    receivers:
+      - name: 'default'
+  resources:
+    requests:
+      cpu: 5m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+
+# ---- Grafana ----
+grafana:
+  enabled: true
+  adminPassword: "rotsu-admin"  # Cambiar en produccion
+  persistence:
+    enabled: false  # Sin PVC para ahorrar disco
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+  service:
+    type: NodePort
+    nodePort: 30100
+  # Sidecar que auto-descubre ConfigMaps con label grafana_dashboard=1
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      folder: RoTSu
+      searchNamespace: ALL
+      resources:
+        requests:
+          cpu: 5m
+          memory: 16Mi
+        limits:
+          cpu: 20m
+          memory: 32Mi
+
+# ---- node-exporter (metricas de host) ----
+nodeExporter:
+  enabled: true
+  resources:
+    requests:
+      cpu: 5m
+      memory: 16Mi
+    limits:
+      cpu: 30m
+      memory: 32Mi
+
+# ---- kube-state-metrics: DESHABILITADO para t3.small ----
+# Aporta metricas como cantidad de deployments/pods, pero consume ~100MB RAM
+# Las metricas clave para IE3 (CPU/mem) vienen de cAdvisor y node-exporter
+kubeStateMetrics:
+  enabled: false

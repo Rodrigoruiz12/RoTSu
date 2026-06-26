@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: rotsu-frontend
+  namespace: rotsu
+  labels:
+    app: rotsu-frontend
+    app.kubernetes.io/name: rotsu-frontend
+    app.kubernetes.io/part-of: rotsu-platform
+    # Debe coincidir con el selector de Prometheus configurado en kube-prometheus-stack
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: rotsu-frontend
+  namespaceSelector:
+    matchNames:
+      - rotsu
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
