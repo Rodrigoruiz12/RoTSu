@@ -35,9 +35,6 @@ provider "helm" {
     client_key             = local.kubeconfig_client_key
   }
   # Timeout para Helm (kube-prometheus-stack puede tardar)
-  experiments {
-    manifest = true
-  }
 }
 
 provider "kubectl" {
