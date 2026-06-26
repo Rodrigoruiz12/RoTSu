@@ -237,6 +237,12 @@ jobs:
           echo "k8s_instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
           echo "::notice::k8s instance ID: $INSTANCE_ID"
 
+      - name: Upload kubeconfig artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubeconfig
+          path: terraform/kubeconfig.yaml
+
 
   # =============================================================================
   # Job 7: Deploy K8s + Publish CI metrics (solo main)
@@ -273,6 +279,12 @@ jobs:
       - name: Setup Docker Hub URL
         id: ecr
         run: echo "url=${{ secrets.DOCKER_USERNAME }}/rotsu-frontend" >> $GITHUB_OUTPUT
+
+      - name: Download kubeconfig artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kubeconfig
+          path: terraform
 
       - name: Get instance public IP (via AWS API, no SSH needed)
         id: ip
