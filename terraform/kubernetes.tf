@@ -73,7 +73,7 @@ resource "null_resource" "download_kubeconfig" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      set -euo pipefail
+      set -eu
       echo "Descargando kubeconfig desde ${local.k8s_public_ip}..."
       scp -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
         -i ${local.k8s_ssh_key_path} \
