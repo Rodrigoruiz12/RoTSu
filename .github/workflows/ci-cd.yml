@@ -139,10 +139,10 @@ jobs:
       - name: Run Compliance Audit
         run: bash scripts/audit.sh
   
-  # Job 5: Build & Push Docker image a ECR (solo main/develop)
+  # Job 5: Build & Push Docker image a Docker Hub (solo main/develop)
   
   build-and-push:
-    name: Build & Push to ECR
+    name: Build & Push to Docker Hub
     needs: [build-and-test, sonarcloud, snyk-security, audit-compliance]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/'))
     runs-on: ubuntu-latest
@@ -190,11 +190,42 @@ jobs:
           cache-to: type=gha,mode=max
 
   
+  # Job 5.5: Pruebas de Aceptacion (IE13)
+  
+  acceptance-tests:
+    name: Acceptance Tests
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Run Acceptance Tests
+        env:
+          IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/rotsu-frontend:${{ needs.build-and-push.outputs.image-tag }}
+        run: bash scripts/acceptance-test.sh
+
+  
   # Job 6: Terraform Apply (solo main) - provisiona/actualiza AWS infra
   
   terraform-apply:
     name: Terraform Apply (AWS)
-    needs: [build-and-push]
+    needs: [build-and-push, acceptance-tests]
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     outputs:
@@ -244,16 +275,14 @@ jobs:
           path: terraform/kubeconfig.yaml
 
 
-  # =============================================================================
   # Job 7: Deploy K8s + Publish CI metrics (solo main)
-  # -----------------------------------------------------------------------------
   # El kubeconfig se lee directamente de SSM Parameter Store (no se baja artifact)
-  # =============================================================================
   deploy-k8s:
     name: Deploy to Kubernetes
-    needs: [terraform-apply, build-and-push, build-and-test]
+    needs: [terraform-apply, build-and-push, build-and-test, acceptance-tests]
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
+    environment: production
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

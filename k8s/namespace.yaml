@@ -5,3 +5,4 @@ metadata:
   labels:
     app.kubernetes.io/name: rotsu
     app.kubernetes.io/part-of: rotsu-platform
+    istio-injection: enabled

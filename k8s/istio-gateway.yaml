@@ -1,0 +1,35 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: rotsu-gateway
+  namespace: rotsu
+spec:
+  selector:
+    istio: ingressgateway # Usa el Ingress de Istio
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: rotsu-vs
+  namespace: rotsu
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - rotsu-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: rotsu-frontend
+        port:
+          number: 80

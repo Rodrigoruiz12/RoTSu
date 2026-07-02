@@ -16,7 +16,7 @@ resource "kubectl_manifest" "service" {
 # La app se expone via NodePort 30080 (accesible en http://<EC2_IP>:30080).
 
 resource "kubectl_manifest" "deployment" {
-  depends_on = [kubectl_manifest.namespace, kubectl_manifest.nginx_configmap]
+  depends_on       = [kubectl_manifest.namespace, kubectl_manifest.nginx_configmap]
   wait_for_rollout = false
   yaml_body = replace(
     file("${path.module}/../../k8s/deployment.yaml"),
@@ -66,4 +66,54 @@ resource "kubectl_manifest" "prometheus_rules" {
 resource "kubectl_manifest" "grafana_dashboard" {
   depends_on = [helm_release.kube_prometheus_stack]
   yaml_body  = file("${path.module}/../../k8s/monitor/dashboards/rotsu-dashboard-configmap.yaml")
+}
+
+# Istio (IE12) - Service Mesh y Redes
+resource "helm_release" "istio_base" {
+  name             = "istio-base"
+  repository       = "https://istio-release.storage.googleapis.com/charts"
+  chart            = "base"
+  namespace        = "istio-system"
+  create_namespace = true
+}
+
+resource "helm_release" "istiod" {
+  depends_on = [helm_release.istio_base]
+  name       = "istiod"
+  repository = "https://istio-release.storage.googleapis.com/charts"
+  chart      = "istiod"
+  namespace  = "istio-system"
+}
+
+resource "helm_release" "istio_ingress" {
+  depends_on = [helm_release.istiod]
+  name       = "istio-ingressgateway"
+  repository = "https://istio-release.storage.googleapis.com/charts"
+  chart      = "gateway"
+  namespace  = "istio-system"
+}
+
+# Separar el gateway.yaml en partes para kubernetes
+data "kubectl_path_documents" "istio_gateway_docs" {
+  pattern = "${path.module}/../../k8s/istio-gateway.yaml"
+}
+
+resource "kubectl_manifest" "istio_gateway" {
+  for_each   = toset(data.kubectl_path_documents.istio_gateway_docs.documents)
+  depends_on = [helm_release.istiod, kubectl_manifest.namespace]
+  yaml_body  = each.value
+}
+
+# AWS CloudWatch (IE12) - Monitoreo Nativo Cloud
+resource "helm_release" "aws_cloudwatch_metrics" {
+  name             = "aws-cloudwatch-metrics"
+  repository       = "https://aws.github.io/eks-charts"
+  chart            = "aws-cloudwatch-metrics"
+  namespace        = "amazon-cloudwatch"
+  create_namespace = true
+
+  set {
+    name  = "clusterName"
+    value = "rotsu-cluster"
+  }
 }
