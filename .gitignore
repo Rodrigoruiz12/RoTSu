@@ -26,6 +26,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Pauta Evaluacion
 Ev2devops.md
 ev3.md
+examen.md
 
 # Terraform
 *.tfstate
@@ -58,3 +59,4 @@ TAREAS_PENDIENTES.md
 
 # Finder (MacOS) folder config
 .DS_Store
+PLAN_IMPLEMENTACION_EXAMEN.md
