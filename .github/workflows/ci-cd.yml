@@ -38,9 +38,14 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Run Tests with Coverage
-        run: npm run test:coverage
-
+      - name: Run Tests with Coverage (Inside Docker - IE7)
+        run: |
+          # 1. Construye el contenedor hasta la fase 'test' (ejecutando pruebas unitarias dentro del contenedor)
+          docker build --target test -t rotsu-test .
+          # 2. Extrae el reporte de coverage generado dentro del contenedor para pasarlo a SonarCloud
+          docker create --name extract-test rotsu-test
+          docker cp extract-test:/app/coverage ./coverage
+          docker rm extract-test
       - name: Build Application
         run: npm run build
 

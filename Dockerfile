@@ -1,5 +1,5 @@
-# Fase de construcción (Builder)
-FROM node:22-alpine AS builder
+# Fase base para dependencias y código
+FROM node:22-alpine AS base
 WORKDIR /app
 
 # Copiar configuración de paquetes, dependencias y seguridad (.npmrc)
@@ -11,6 +11,12 @@ RUN npm install
 # Copiar el código fuente
 COPY . .
 
+# Fase de pruebas unitarias dentro del contenedor (IE7)
+FROM base AS test
+RUN npm run test:coverage
+
+# Fase de construcción (Builder)
+FROM base AS builder
 # Construir aplicación con Vite
 RUN npm run build
 
