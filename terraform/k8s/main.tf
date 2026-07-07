@@ -75,6 +75,7 @@ resource "helm_release" "istio_base" {
   chart            = "base"
   namespace        = "istio-system"
   create_namespace = true
+  wait             = false
 }
 
 resource "helm_release" "istiod" {
@@ -84,6 +85,7 @@ resource "helm_release" "istiod" {
   chart      = "istiod"
   namespace  = "istio-system"
   timeout    = 600
+  wait       = false
 }
 
 resource "helm_release" "istio_ingress" {
@@ -93,6 +95,7 @@ resource "helm_release" "istio_ingress" {
   chart      = "gateway"
   namespace  = "istio-system"
   timeout    = 600
+  wait       = false
 }
 
 # Separar el gateway.yaml en partes para kubernetes
@@ -113,6 +116,7 @@ resource "helm_release" "aws_cloudwatch_metrics" {
   chart            = "aws-cloudwatch-metrics"
   namespace        = "amazon-cloudwatch"
   create_namespace = true
+  wait             = false
 
   set {
     name  = "clusterName"
