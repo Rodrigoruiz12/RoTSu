@@ -17,9 +17,9 @@ variable "environment" {
 }
 
 variable "instance_type" {
-  description = "Tipo de instancia EC2 para el nodo Kubernetes (t3.small = 2GB RAM, suficiente para kubeadm single-node)"
+  description = "Tipo de instancia EC2 para el nodo Kubernetes (t3.medium = 4GB RAM, necesario para Istio)"
   type        = string
-  default     = "t3.small"
+  default     = "t3.medium"
 }
 
 variable "ssh_public_key" {

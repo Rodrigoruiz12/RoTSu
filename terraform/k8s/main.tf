@@ -83,6 +83,7 @@ resource "helm_release" "istiod" {
   repository = "https://istio-release.storage.googleapis.com/charts"
   chart      = "istiod"
   namespace  = "istio-system"
+  timeout    = 600
 }
 
 resource "helm_release" "istio_ingress" {
@@ -91,6 +92,7 @@ resource "helm_release" "istio_ingress" {
   repository = "https://istio-release.storage.googleapis.com/charts"
   chart      = "gateway"
   namespace  = "istio-system"
+  timeout    = 600
 }
 
 # Separar el gateway.yaml en partes para kubernetes
