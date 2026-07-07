@@ -166,7 +166,6 @@ resource "aws_spot_instance_request" "k3s" {
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.k3s.id]
-  iam_instance_profile   = "EMR_EC2_DefaultRole"
   key_name               = var.enable_ssh_access ? aws_key_pair.k3s[0].key_name : null
   spot_price             = var.spot_max_price
   spot_type              = "persistent"
@@ -197,7 +196,6 @@ resource "aws_instance" "k3s" {
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.k3s.id]
-  iam_instance_profile   = "EMR_EC2_DefaultRole"
   key_name               = var.enable_ssh_access ? aws_key_pair.k3s[0].key_name : null
   user_data              = data.template_cloudinit_config.k3s.rendered
 
